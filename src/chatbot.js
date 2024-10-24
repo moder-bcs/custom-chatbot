@@ -5,21 +5,13 @@ const Chatbot = () => {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [showChatbot, setShowChatbot] = useState(false);
-  const [showPopup, setShowPopup] = useState(false);
+  const [currentStep, setCurrentStep] = useState(-1); 
+  const [userResponses, setUserResponses] = useState({ name: '', email: '' }); 
   const [hasOpenedOnce, setHasOpenedOnce] = useState(false); 
+  const [showPopup, setShowPopup] = useState(false); 
+  const steps = ['What is your name?', 'What is your email address?'];
  
   const chatBoxRef = useRef(null);
- 
-  
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setShowPopup(true);
-      const hidePopupTimer = setTimeout(() => {
-        setShowPopup(false);
-      }, 5000); 
-      return () => clearTimeout(hidePopupTimer);
-    }, 1000); 
-  }, []);
  
   
   useEffect(() => {
@@ -28,57 +20,101 @@ const Chatbot = () => {
     }
   }, [messages]);
  
+  
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setShowPopup(true);
+    }, 1000); 
  
+    return () => clearTimeout(timer); 
+  }, []);
+ 
+  
   const handleKeyDown = (e) => {
     if (e.key === 'Enter') {
       handleSend();
     }
   };
  
+  
   const handleSend = () => {
     if (input.trim()) {
       setMessages([...messages, { user: 'user', text: input }]);
+ 
+      
+      if (currentStep === 0) {
+        setUserResponses({ ...userResponses, name: input });
+      } else if (currentStep === 1) {
+        setUserResponses({ ...userResponses, email: input });
+      }
+ 
+      setInput('');
+      goToNextStep(); 
+    }
+  };
+ 
+  
+  const goToNextStep = () => {
+    if (currentStep < steps.length - 1) {
+      setCurrentStep(currentStep + 1);
       setMessages((prev) => [
         ...prev,
-        { user: 'bot', text: 'I am here to help with anything you need!' },
+        { user: 'bot', text: steps[currentStep + 1] },
       ]);
-      setInput('');
+    }
+  };
+ 
+  
+  const goToPreviousStep = () => {
+    if (currentStep > 0) {
+      setCurrentStep(currentStep - 1);
+      setMessages((prev) => [
+        ...prev,
+        { user: 'bot', text: steps[currentStep - 1] },
+      ]);
     }
   };
  
   
   const toggleChatbot = () => {
     setShowChatbot(!showChatbot);
- 
-    
-    if (!hasOpenedOnce) {
-      setMessages((prev) => [
-        ...prev,
-        { user: 'bot', text: 'How can I assist you today?' },
-      ]);
+    if (!hasOpenedOnce || messages.length === 0) {
+      setMessages([{ user: 'bot', text: 'How can I assist you today?' }]);
       setHasOpenedOnce(true); 
     }
- 
     setShowPopup(false); 
+  };
+ 
+  
+  const clearConversation = () => {
+    setMessages([{ user: 'bot', text: 'How can I assist you today?' }]);
+    setCurrentStep(0); 
   };
  
   return (
     <div>
-      {}
+     
       <button onClick={toggleChatbot} style={styles.chatbotButton}>
         <FaCommentDots style={styles.icon} />
       </button>
  
-      {}
+      
       {showPopup && !showChatbot && (
         <div style={styles.popupMessage}>
           How can I assist you?
         </div>
       )}
  
-      {/* Chatbot Window */}
+      
       {showChatbot && (
         <div style={styles.chatContainer}>
+          
+          <img
+            src="./logo512.png" 
+            alt='Orgs Name'
+            style={styles.logo}
+          />
+ 
           <div style={styles.chatBox} ref={chatBoxRef}>
             {messages.map((message, index) => (
               <div
@@ -88,7 +124,7 @@ const Chatbot = () => {
                   alignSelf: message.user === 'bot' ? 'flex-start' : 'flex-end',
                   backgroundColor: message.user === 'bot' ? '#f1f0f0' : '#007bff',
                   color: message.user === 'bot' ? '#000' : '#fff',
-                  animation: 'fadeIn 0.3s', 
+                  animation: 'fadeIn 0.3s',
                 }}
               >
                 {message.text}
@@ -100,12 +136,24 @@ const Chatbot = () => {
               style={styles.input}
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyDown} 
+              onKeyDown={handleKeyDown}
               placeholder="Type a message..."
             />
             <button onClick={handleSend} style={styles.sendButton}>
               Send
             </button>
+          </div>
+ 
+          
+          <div style={styles.buttonContainer}>
+            <button onClick={clearConversation} style={styles.clearButton}>
+              Clear Conversation
+            </button>
+            {currentStep > 0 && (
+              <button onClick={goToPreviousStep} style={styles.navButton}>
+                Previous
+              </button>
+            )}
           </div>
         </div>
       )}
@@ -131,12 +179,7 @@ const styles = {
     cursor: 'pointer',
     boxShadow: '0px 4px 12px rgba(0, 0, 0, 0.3)',
     fontSize: '24px',
-    transition: 'background-color 0.3s ease, transform 0.3s ease', 
-  },
-  chatbotButtonHover: {
-    backgroundColor: '#0056b3',
-    transform: 'scale(1.1)',
-    boxShadow: '0px 8px 20px rgba(0, 0, 0, 0.4)',
+    transition: 'background-color 0.3s ease, transform 0.3s ease',
   },
   icon: {
     fontSize: '30px',
@@ -152,7 +195,7 @@ const styles = {
     borderRadius: '10px',
     boxShadow: '0px 4px 12px rgba(0, 0, 0, 0.3)',
     fontSize: '14px',
-    zIndex: 1000,
+    zIndex: 1000, 
     animation: 'fadeIn 0.5s, fadeOut 0.5s 4.5s', 
   },
   chatContainer: {
@@ -171,7 +214,12 @@ const styles = {
     backdropFilter: 'blur(15px)',
     boxShadow: '0 8px 32px rgba(31, 38, 135, 0.37)',
     overflow: 'hidden',
-    animation: 'fadeIn 0.3s', 
+    animation: 'fadeIn 0.3s',
+  },
+  logo: {
+    width: '100%', 
+    maxHeight: '50px', 
+    marginBottom: '10px', 
   },
   chatBox: {
     display: 'flex',
@@ -180,7 +228,6 @@ const styles = {
     overflowY: 'scroll',
     flex: 1,
     paddingRight: '5px',
-    scrollbarWidth: 'none', 
   },
   message: {
     maxWidth: '60%',
@@ -209,6 +256,31 @@ const styles = {
     border: 'none',
     cursor: 'pointer',
     transition: 'background-color 0.3s ease',
+  },
+  clearButton: {
+    padding: '10px 15px',
+    backgroundColor: '#dc3545',
+    color: '#fff',
+    borderRadius: '15px',
+    border: 'none',
+    cursor: 'pointer',
+    transition: 'background-color 0.3s ease',
+    flex: 1, 
+  },
+  navButton: {
+    padding: '10px 15px',
+    backgroundColor: '#007bff',
+    color: '#fff',
+    borderRadius: '15px',
+    border: 'none',
+    cursor: 'pointer',
+    transition: 'background-color 0.3s ease',
+    flex: 1, 
+  },
+  buttonContainer: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    marginTop: '10px',
   },
 };
  
@@ -245,4 +317,5 @@ styleSheet.type = 'text/css';
 styleSheet.innerText = globalStyles;
 document.head.appendChild(styleSheet);
  
+
 export default Chatbot;
